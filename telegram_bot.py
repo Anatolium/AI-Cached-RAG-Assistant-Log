@@ -191,33 +191,40 @@ class TelegramRAGBot:
         user_id = str(user.id)
         username = user.username or user.first_name or "Unknown"
 
-        # Показываем, что бот печатает
-        await update.message.chat.send_action(action="typing")
-
         start_time = time.time()
 
         try:
-            # Проверяем кеш
+            print(f"\n❓ Новый запрос от {username} (ID: {user_id})")
+
+            await update.message.chat.send_action(action="typing")
+
+            # Шаг 1. Проверка кеша
+            print("[Шаг 1] Проверка кеша...")
             cached_answer = self.cache.get(user_message)
             from_cache = cached_answer is not None
 
-            if cached_answer:
+            if from_cache:
+                print("✓ Найден ответ в кеше")
                 answer = cached_answer
             else:
-                # Выполняем RAG запрос
+                # Шаг 2. Выполнение RAG
+                print("[Шаг 2] Выполнение RAG (поиск + генерация)...")
+
                 answer, _ = self.rag_assistant.generate_response(
                     query=user_message,
                     top_k=3,
                     verbose=False
                 )
 
-                # Сохраняем в кеш
+                # Шаг 3. Сохранение в кеш
+                print("[Шаг 3] Сохранение ответа в кеш...")
                 self.cache.set(user_message, answer)
+                print("✓ Ответ сохранен в кеше")
 
-            # Вычисляем время ответа
+            # Шаг 4. Запись в базу данных
             response_time_ms = int((time.time() - start_time) * 1000)
 
-            # Логируем взаимодействие
+            print("[Шаг 4] Запись взаимодействия в базу данных...")
             self.logger.log_interaction(
                 query=user_message,
                 response=answer,
@@ -227,30 +234,26 @@ class TelegramRAGBot:
                 from_cache=from_cache,
                 response_time_ms=response_time_ms
             )
+            print("✓ Взаимодействие записано")
 
-            # Отправляем ответ пользователю
-            # Разбиваем длинные ответы на части (Telegram имеет лимит 4096 символов)
+            # Шаг 5. Отправка ответа
+            print(f"[Шаг 5] Отправка ответа ({len(answer)} символов)...")
+
             max_length = 4000
-            if len(answer) <= max_length:
-                await update.message.reply_text(answer)
-            else:
-                # Отправляем частями
-                parts = [answer[i:i + max_length] for i in range(0, len(answer), max_length)]
-                for i, part in enumerate(parts):
-                    if i == 0:
-                        await update.message.reply_text(part)
-                    else:
-                        await update.message.reply_text(part)
+            for i in range(0, len(answer), max_length):
+                await update.message.reply_text(answer[i:i + max_length])
 
-            # Добавляем индикатор, если ответ из кеша
             if from_cache:
                 await update.message.reply_text("💾 (ответ из кеша)")
 
+            print(f"✓ Обработка завершена за {response_time_ms} мс")
+
         except Exception as e:
             error_message = f"❌ Произошла ошибка при обработке запроса: {str(e)}"
+            print(error_message)
+
             await update.message.reply_text(error_message)
 
-            # Логируем ошибку
             self.logger.log_interaction(
                 query=user_message,
                 response=error_message,
