@@ -27,9 +27,7 @@ def initialize_system():
     Returns:
         Кортеж (embedding_store, rag_assistant, cache, logger)
     """
-    print("=" * 70)
     print("🚀 ИНИЦИАЛИЗАЦИЯ RAG-АССИСТЕНТА")
-    print("=" * 70)
 
     load_dotenv()
 
@@ -75,10 +73,7 @@ def initialize_system():
     print("\n[4/4] Инициализация логгера базы данных...")
     logger = DatabaseLogger(db_path="logs.db")
     print("✓ Логгер инициализирован")
-
-    print("\n" + "=" * 70)
     print("✅ СИСТЕМА ГОТОВА К РАБОТЕ")
-    print("=" * 70)
 
     return embedding_store, rag_assistant, cache, logger
 
@@ -114,9 +109,8 @@ def answer_question(
     Returns:
         Ответ на вопрос
     """
-    print("\n" + "=" * 70)
     print(f"❓ ВОПРОС: {query}")
-    print("=" * 70)
+    print("\n" + "=" * 70)
 
     start_time = time.time()
 
@@ -130,7 +124,6 @@ def answer_question(
         print("\n💾 Ответ из кеша:")
         print("-" * 70)
         print(cached_answer)
-        print("-" * 70)
         answer = cached_answer
     else:
         # Шаг 2: Ответа нет в кеше - выполняем RAG
@@ -140,7 +133,7 @@ def answer_question(
             answer, search_results = rag_assistant.generate_response(
                 query=query,
                 top_k=3,
-                verbose=True
+                verbose=False
             )
 
             # Шаг 3: Сохраняем ответ в кеш
@@ -151,7 +144,6 @@ def answer_question(
             print("\n💡 ОТВЕТ:")
             print("-" * 70)
             print(answer)
-            print("-" * 70)
 
         except Exception as e:
             error_msg = f"Ошибка при обработке запроса: {str(e)}"
@@ -184,11 +176,11 @@ def main():
         load_dotenv()
 
         telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        if not telegram_token:
+            raise ValueError("Не задан TELEGRAM_BOT_TOKEN в файле .env")
 
         # Запускаем Telegram бота
-        print("\n" + "=" * 70)
         print("🤖 ЗАПУСК TELEGRAM БОТА")
-        print("=" * 70)
         bot = TelegramRAGBot(
             token=telegram_token,
             rag_assistant=rag_assistant,
