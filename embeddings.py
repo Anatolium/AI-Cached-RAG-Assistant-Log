@@ -26,7 +26,9 @@ class EmbeddingStore:
             collection_name: str = "documents",
             persist_directory: str = "./chroma_db",
             embedding_model: str = "text-embedding-3-small",
-            api_key: str = None
+            api_key: str = None,
+            base_url: str = None
+
     ):
         """
         Инициализация хранилища эмбеддингов.
@@ -50,7 +52,8 @@ class EmbeddingStore:
 
         # Инициализируем клиент OpenAI для создания эмбеддингов
         # API ключ берется из параметра или переменной окружения OPENAI_API_KEY
-        self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"),
+                                    base_url=base_url or os.getenv("OPENAI_BASE_URL"))
         self.embedding_model = embedding_model
 
         print(f"Модель эмбеддингов: {embedding_model} (OpenAI API)")

@@ -244,7 +244,7 @@ class TelegramRAGBot:
 
             # Добавляем индикатор, если ответ из кеша
             if from_cache:
-                await update.message.reply_text("💾 (ответ из кеша)", quote=False)
+                await update.message.reply_text("💾 (ответ из кеша)")
 
         except Exception as e:
             error_message = f"❌ Произошла ошибка при обработке запроса: {str(e)}"
@@ -260,14 +260,6 @@ class TelegramRAGBot:
                 from_cache=False,
                 response_time_ms=int((time.time() - start_time) * 1000)
             )
-
-    # def run(self):
-    #     """Запускает бота"""
-    #     print("🤖 Запуск Telegram бота...")
-    #     print("Бот готов к работе! Нажмите Ctrl+C для остановки.")
-    #     # self.application.run_polling()
-    #     self.application.run_polling(drop_pending_updates=True)
-
 
     def run(self):
         print("🤖 Запуск Telegram бота...")

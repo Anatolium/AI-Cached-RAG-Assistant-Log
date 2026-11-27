@@ -25,7 +25,9 @@ class VectorStore:
             collection_name: str = "rag_documents",
             persist_directory: str = "./chroma_db",
             embedding_model: str = "text-embedding-3-small",
-            api_key: Optional[str] = None
+            api_key: Optional[str] = None,
+            base_url: Optional[str] = None,
+
     ):
         """
         Инициализация векторного хранилища.
@@ -40,7 +42,8 @@ class VectorStore:
             collection_name=collection_name,
             persist_directory=persist_directory,
             embedding_model=embedding_model,
-            api_key=api_key or os.getenv("OPENAI_API_KEY")
+            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            base_url=base_url or os.getenv("OPENAI_BASE_URL")
         )
 
     def add_documents(self, documents: List[Tuple[str, str]]) -> None:

@@ -5,7 +5,8 @@
 1. Загрузка конфигурации
 2. Инициализация всех компонентов (кеш, векторная база, RAG)
 3. Добавление примеров документов (при первом запуске)
-4. Интерактивный цикл общения с пользователем
+4. Запуск Telegram-бота
+5. Исключён интерактивный цикл общения с пользователем
 """
 
 import os
@@ -22,7 +23,7 @@ from telegram_bot import TelegramRAGBot
 def initialize_system():
     """
     Инициализирует все компоненты RAG-системы.
-    
+
     Returns:
         Кортеж (embedding_store, rag_assistant, cache, logger)
     """
@@ -30,16 +31,15 @@ def initialize_system():
     print("🚀 ИНИЦИАЛИЗАЦИЯ RAG-АССИСТЕНТА")
     print("=" * 70)
 
-    # Загружаем переменные окружения из .env файла
     load_dotenv()
 
-    # Проверяем наличие API ключа OpenAI
     api_key = os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL")
+
     if not api_key:
-        print("⚠️  ВНИМАНИЕ: Не найден OPENAI_API_KEY в переменных окружения!")
-        print("   Создайте файл .env и добавьте туда: OPENAI_API_KEY=your_key_here")
-        print("   Или установите переменную окружения в системе.")
-        print()
+        raise ValueError(
+            "Не задан OPENAI_API_KEY в файле .env"
+        )
 
     # 1. Инициализируем кеш для хранения ответов
     print("\n[1/4] Инициализация кеша...")
@@ -51,7 +51,8 @@ def initialize_system():
         collection_name="rag_documents",
         persist_directory="./chroma_db",
         embedding_model="text-embedding-3-small",  # Модель OpenAI для эмбеддингов
-        api_key=api_key
+        api_key=api_key,
+        base_url=base_url
     )
 
     # Проверяем, нужно ли добавить примеры документов
@@ -87,29 +88,29 @@ def answer_question(
         rag_assistant: RAGAssistant,
         cache: ResponseCache,
         logger: DatabaseLogger,
-        source: str = "console",
+        source: str = "telegram",
         user_id: Optional[str] = None,
         username: Optional[str] = None
 ) -> str:
     """
     Отвечает на вопрос пользователя с использованием кеша и RAG.
-    
+
     Логика работы:
     1. Проверяем кеш - если ответ есть, возвращаем его
     2. Если ответа нет, выполняем RAG (поиск + генерация)
     3. Сохраняем новый ответ в кеш
     4. Логируем взаимодействие в базу данных
     5. Возвращаем ответ
-    
+
     Args:
         query: Вопрос пользователя
         rag_assistant: Экземпляр RAG-ассистента
         cache: Экземпляр кеша
         logger: Экземпляр логгера базы данных
-        source: Источник запроса (console, telegram и т.д.)
+        source: Источник запроса (telegram и т.д.)
         user_id: ID пользователя (для Telegram)
         username: Имя пользователя
-        
+
     Returns:
         Ответ на вопрос
     """
@@ -172,157 +173,29 @@ def answer_question(
     return answer
 
 
-def interactive_mode(rag_assistant: RAGAssistant, cache: ResponseCache, logger: DatabaseLogger):
-    """
-    Интерактивный режим общения с ассистентом.
-    
-    Пользователь может задавать вопросы в цикле до тех пор,
-    пока не введет команду выхода.
-    """
-    print("\n" + "=" * 70)
-    print("💬 ИНТЕРАКТИВНЫЙ РЕЖИМ")
-    print("=" * 70)
-    print("\nВы можете задавать вопросы ассистенту.")
-    print("Для выхода введите: exit, quit, выход или q")
-    print("\nДоступные команды:")
-    print("  • cache - показать информацию о кеше")
-    print("  • clear_cache - очистить кеш")
-    print("  • stats - показать статистику системы")
-    print("  • logs - экспортировать логи в CSV")
-    print()
-
-    while True:
-        try:
-            # Получаем ввод от пользователя
-            user_input = input("\n👤 Вы: ").strip()
-
-            # Проверяем команды выхода
-            if user_input.lower() in ['exit', 'quit', 'выход', 'q', '']:
-                print("\n👋 До свидания!")
-                break
-
-            # Обрабатываем специальные команды
-            if user_input.lower() == 'cache':
-                print(f"\n📊 Кеш содержит {cache.size()} записей")
-                continue
-
-            if user_input.lower() == 'clear_cache':
-                cache.clear()
-                print("\n✓ Кеш очищен")
-                continue
-
-            if user_input.lower() == 'stats':
-                print(f"\n📊 СТАТИСТИКА СИСТЕМЫ:")
-                print(f"  • Документов в ChromaDB: {rag_assistant.embedding_store.collection.count()}")
-                print(f"  • Записей в кеше: {cache.size()}")
-                print(f"  • Модель LLM: {rag_assistant.model}")
-
-                # Показываем статистику из логов
-                log_stats = logger.get_stats()
-                print(f"\n📝 ЛОГИ:")
-                print(f"  • Всего запросов: {log_stats['total_requests']}")
-                print(f"  • Из кеша: {log_stats['cached_requests']}")
-                print(f"  • Среднее время ответа: {log_stats['avg_response_time_ms']:.0f} мс")
-                continue
-
-            if user_input.lower() == 'logs':
-                filename = f"logs_console_{int(time.time())}.csv"
-                logger.export_to_csv(output_path=filename, source="console")
-                print(f"\n✓ Логи экспортированы в файл: {filename}")
-                continue
-
-            # Обрабатываем вопрос пользователя
-            answer_question(user_input, rag_assistant, cache, logger, source="console")
-
-        except KeyboardInterrupt:
-            print("\n\n👋 Прервано пользователем. До свидания!")
-            break
-        except Exception as e:
-            print(f"\n❌ Ошибка: {str(e)}")
-
-
-def demo_mode(rag_assistant: RAGAssistant, cache: ResponseCache, logger: DatabaseLogger):
-    """
-    Демонстрационный режим с заранее заготовленными вопросами.
-    
-    Показывает работу системы на примерах, включая использование кеша.
-    """
-    print("\n" + "=" * 70)
-    print("🎬 ДЕМОНСТРАЦИОННЫЙ РЕЖИМ")
-    print("=" * 70)
-    print("\nСейчас будет продемонстрирована работа RAG-ассистента")
-    print("на нескольких примерах вопросов.\n")
-
-    # Список демо-вопросов
-    demo_questions = [
-        "Что такое Python и для чего он используется?",
-        "Расскажи про RAG и как он работает",
-        "Что такое векторные базы данных?",
-        "Что такое Python и для чего он используется?"  # Повторный вопрос для демонстрации кеша
-    ]
-
-    for i, question in enumerate(demo_questions, 1):
-        print(f"\n\n{'#' * 70}")
-        print(f"ВОПРОС {i} из {len(demo_questions)}")
-        print(f"{'#' * 70}")
-
-        answer_question(question, rag_assistant, cache, logger, source="console")
-
-        # Пауза между вопросами (кроме последнего)
-        if i < len(demo_questions):
-            input("\n[Нажмите Enter для следующего вопроса...]")
-
-    print("\n\n" + "=" * 70)
-    print("✅ ДЕМОНСТРАЦИЯ ЗАВЕРШЕНА")
-    print("=" * 70)
-
-
 def main():
     """
-    Главная функция приложения.
+    Главная функция приложения — запуск Telegram-бота.
     """
     try:
         # Инициализируем систему
         embedding_store, rag_assistant, cache, logger = initialize_system()
 
-        # Загружаем переменные окружения
         load_dotenv()
+
         telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
-        # Выбор режима работы
+        # Запускаем Telegram бота
         print("\n" + "=" * 70)
-        print("ВЫБОР РЕЖИМА РАБОТЫ")
+        print("🤖 ЗАПУСК TELEGRAM БОТА")
         print("=" * 70)
-        print("\n1. Интерактивный режим - задавайте свои вопросы")
-        print("2. Демонстрационный режим - готовые примеры вопросов")
-        if telegram_token:
-            print("3. Telegram бот - запуск бота для Telegram")
-        print()
-
-        mode = input("Выберите режим (1, 2" + (", 3" if telegram_token else "") + ", по умолчанию 1): ").strip()
-
-        if mode == '2':
-            demo_mode(rag_assistant, cache, logger)
-
-            # Предложить перейти в интерактивный режим
-            print("\n" + "=" * 70)
-            continue_interactive = input("\nПерейти в интерактивный режим? (y/n): ").strip().lower()
-            if continue_interactive in ['y', 'yes', 'д', 'да', '']:
-                interactive_mode(rag_assistant, cache, logger)
-        elif mode == '3' and telegram_token:
-            # Запускаем Telegram бота
-            print("\n" + "=" * 70)
-            print("🤖 ЗАПУСК TELEGRAM БОТА")
-            print("=" * 70)
-            bot = TelegramRAGBot(
-                token=telegram_token,
-                rag_assistant=rag_assistant,
-                cache=cache,
-                logger=logger
-            )
-            bot.run()
-        else:
-            interactive_mode(rag_assistant, cache, logger)
+        bot = TelegramRAGBot(
+            token=telegram_token,
+            rag_assistant=rag_assistant,
+            cache=cache,
+            logger=logger
+        )
+        bot.run()
 
     except Exception as e:
         print(f"\n❌ Критическая ошибка: {str(e)}")

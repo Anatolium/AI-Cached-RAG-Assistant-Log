@@ -26,6 +26,7 @@ class RAGAssistant:
             self,
             embedding_store,
             api_key: Optional[str] = None,
+            base_url: Optional[str] = None,
             model: str = "gpt-4o-mini",
             temperature: float = 0.7
     ):
@@ -44,7 +45,8 @@ class RAGAssistant:
 
         # Инициализируем клиент OpenAI
         # API ключ берется из параметра или переменной окружения OPENAI_API_KEY
-        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"),
+                             base_url=base_url or os.getenv("OPENAI_BASE_URL"))
 
         print(f"✓ RAG-ассистент инициализирован (модель: {model})")
 
