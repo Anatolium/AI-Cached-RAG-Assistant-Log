@@ -221,10 +221,19 @@ class TelegramRAGBot:
                 self.cache.set(user_message, answer)
                 print("✓ Ответ сохранен в кеше")
 
-            # Шаг 4. Запись в базу данных
+            # Шаг 4. Вывод вопроса и ответа в лог
+            answer_preview = " ".join(answer.split())[:70]
+
+            print(f"\n📝 ВОПРОС: {user_message}")
+            print(f"📌 ИСТОЧНИК: {'КЕШ' if from_cache else 'RAG + LLM'}")
+            print(f"💬 ОТВЕТ (первые 70 символов): {answer_preview}")
+            print(f"📏 Полная длина ответа: {len(answer)} символов")
+
+            # Шаг 5. Запись в базу данных
             response_time_ms = int((time.time() - start_time) * 1000)
 
             print("[Шаг 4] Запись взаимодействия в базу данных...")
+
             self.logger.log_interaction(
                 query=user_message,
                 response=answer,
@@ -236,7 +245,7 @@ class TelegramRAGBot:
             )
             print("✓ Взаимодействие записано")
 
-            # Шаг 5. Отправка ответа
+            # Шаг 6. Отправка ответа
             print(f"[Шаг 5] Отправка ответа ({len(answer)} символов)...")
 
             max_length = 4000
