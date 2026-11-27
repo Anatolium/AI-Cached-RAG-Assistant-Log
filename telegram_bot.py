@@ -219,7 +219,6 @@ class TelegramRAGBot:
                 # Шаг 3. Сохранение в кеш
                 print("[Шаг 3] Сохранение ответа в кеш...")
                 self.cache.set(user_message, answer)
-                print("✓ Ответ сохранен в кеше")
 
             # Шаг 4. Вывод вопроса и ответа в лог
             answer_preview = " ".join(answer.split())[:70]
