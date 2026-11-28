@@ -167,7 +167,7 @@ class TelegramRAGBot:
 
             # Сохраняем во временный файл
             filename = f"logs_{user_id}_{int(time.time())}.csv"
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, 'w', encoding='utf-8-sig') as f:
                 f.write(csv_content)
 
             # Отправляем файл пользователю
